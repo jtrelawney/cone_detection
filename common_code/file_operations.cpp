@@ -2,6 +2,11 @@
 
 using path = std::filesystem::path;
 
+path extract_filename(const path &this_path){
+  return this_path.filename();
+//  return std::filesystem::getFileName(this_path);
+}
+
 
 std::string get_time_stamp(const path &this_path){
 
