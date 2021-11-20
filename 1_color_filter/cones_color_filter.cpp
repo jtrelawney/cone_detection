@@ -72,7 +72,7 @@ int main(int, char**)
     higher = Scalar(iHighH, iHighS, iHighV);
 
     // apply the hsv filter and display the result
-    cvtColor(frame, imgHSV, COLOR_BGR2HSV);
+    //cvtColor(frame, imgHSV, COLOR_BGR2HSV);
     cvtColor(frame, imgHSV, COLOR_BGR2HSV);
     inRange(imgHSV, lower, higher, img_thresh);
     imshow("Thresholded Image", img_thresh);

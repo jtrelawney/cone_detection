@@ -12,6 +12,6 @@ add_library(libfileops STATIC
 
 target_include_directories(libfileops PUBLIC ../common_code/ )
 
-add_executable(cones_pattern_extraction.exe cones_pattern_extraction.cpp)
+add_executable(crop_cone_templates.exe crop_cone_templates.cpp)
 
-target_link_libraries(cones_pattern_extraction.exe libfileops ${OpenCV_LIBS})
+target_link_libraries(crop_cone_templates.exe libfileops ${OpenCV_LIBS})
