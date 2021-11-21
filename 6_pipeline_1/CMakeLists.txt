@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(basic_features)
+project(pipeline1)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -18,15 +18,20 @@ add_library(libdisplaymanager STATIC
     ../../common_code/display_manager_class.cpp
 )
 
-add_library(libfeaturedetect STATIC
-    ../../common_code/feature_detection.cpp
+add_library(libsupport STATIC
+    ../support.cpp
 )
+
+#add_library(libfeaturedetect STATIC
+#    ../../common_code/feature_detection.cpp
+#)
 
 target_include_directories(libfileops PUBLIC ../common_code/ )
 target_include_directories(libimageops PUBLIC ../common_code/ )
 target_include_directories(libdisplaymanager PUBLIC ../common_code/ )
-target_include_directories(libfeaturedetect PUBLIC ../common_code/ )
+target_include_directories(libsupport PUBLIC ../common_code/ )
+#target_include_directories(libfeaturedetect PUBLIC ../common_code/ )
 
-add_executable(basic_features.exe basic_features.cpp)
+add_executable(pipeline_1.exe pipeline_1.cpp)
 
-target_link_libraries(basic_features.exe libfileops libdisplaymanager libimageops libfeaturedetect ${OpenCV_LIBS})
+target_link_libraries(pipeline_1.exe libfileops libdisplaymanager libimageops libsupport ${OpenCV_LIBS})
