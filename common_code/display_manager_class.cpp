@@ -4,9 +4,14 @@
 
 display_manager::~display_manager(){}
 
-display_manager::display_manager(int window_count=4):is_configured(false){
+display_manager::display_manager(int window_count=4):is_configured(false),debug_on(false){
   if (window_count != 4) std::cout << "display manager constructor : currently only 4 windows are allowed" << std::endl;
   this->window_count = 4;
+}
+
+void display_manager::toggle_debug_output(bool onoff){
+  std::cout << "display manager : toggle toggle_debug_output to " << onoff << std::endl;
+  debug_on = onoff;
 }
 
 void display_manager::configure(cv::Mat template_image){
@@ -44,7 +49,7 @@ bool display_manager::set_window(std::string window_name, int window_position){
     std::cout << "display manager : set_window : position <0 or position >3" << std::endl;
     return false;
   }
-  std::cout << "display manager : set_window : position : " << window_position << " -> " << window_name << std::endl;
+  if (debug_on==true) std::cout << "display manager : set_window : position : " << window_position << " -> " << window_name << std::endl;
   window_info[window_name] = window_position;
   return true;
 }
@@ -68,20 +73,22 @@ bool display_manager::set_image(std::string window_name, cv::Mat image){
   //std::cout << "display manager : set_image : image type = " << image_type << " target imagetype = " << output_image_type << std::endl;
 
   if (image_type != output_image_type) {
-    std::cout << "display manager : set_image : converting image type from = " << image_type << " to " << output_image_type << std::endl;
 
+    if (debug_on==true) {
+    std::cout << "display manager : set_image : converting image type from = " << image_type << " to " << output_image_type << std::endl;
     print_image_info(my_output_image,"expected");
     print_image_info(image,"image");
+    }
 
     if ( (image.channels() == 1 ) && (my_output_image.channels() ) == 3 ) {
-      std::cout << "convert channels from 1 to 3 " << std::endl;
+      if (debug_on==true) std::cout << "convert channels from 1 to 3 " << std::endl;
       cvtColor(image, image, cv::COLOR_GRAY2BGR);
     } else if ( (image.channels() == 3 ) & (my_output_image.channels() ) == 1 ) {
-      std::cout << "convert channels from 3 to 1 " << std::endl;
+      if (debug_on==true) std::cout << "convert channels from 3 to 1 " << std::endl;
       cvtColor(image, image, cv::COLOR_BGR2GRAY);
-      std::cout << "seek cover, assuming you want BGR and not HSV/..." << std::endl;
+      if (debug_on==true) std::cout << "seek cover, assuming you want BGR and not HSV/..." << std::endl;
     } else {
-      std::cout << "conversions from " << image.channels() << " to " << my_output_image.channels() << " not yet implemented " << std::endl;
+      if (debug_on==true) std::cout << "conversions from " << image.channels() << " to " << my_output_image.channels() << " not yet implemented " << std::endl;
     }
     //cv::cvtColor(image,image, cv::COLOR_GRAY2BGR);
     // this produces a black image in case of small floats
@@ -99,18 +106,18 @@ bool display_manager::set_image(std::string window_name, cv::Mat image){
   double row_factor = 1.0;
   if (image.rows != window_rows) {
     row_factor = (double) window_rows / (double) image.rows;
-    std::cout << "required rows = " << window_rows << " found = " << image.rows << "   , factor = " << row_factor << std::endl;
+    if (debug_on==true) std::cout << "required rows = " << window_rows << " found = " << image.rows << "   , factor = " << row_factor << std::endl;
   }
 
   int target_cols = window_cols;
   double col_factor = 1.0;
   if (image.cols != window_cols) {
     col_factor = (double) window_cols / (double) image.cols;
-    std::cout << "required cols = " << window_cols << " found = " << image.cols << "   , factor = " << col_factor << std::endl;
+    if (debug_on==true) std::cout << "required cols = " << window_cols << " found = " << image.cols << "   , factor = " << col_factor << std::endl;
   }
 
   if ( (row_factor!=1.0) | (col_factor!=1.0) ){
-    std::cout << "adjusting image size, seek cover " << std::endl;
+    if (debug_on==true) std::cout << "adjusting image size, seek cover " << std::endl;
     cv::Mat resized_image;
     cv::Size target_size(window_cols,window_rows);
     cv::resize(image, image, target_size, cv::INTER_LINEAR);
@@ -124,12 +131,12 @@ bool display_manager::set_image(std::string window_name, cv::Mat image){
   }
 
   int window_position = it->second;
-  std::cout << "display manager : set_image : " << window_name << " , pos = " << window_position << std::endl;
+  if (debug_on==true) std::cout << "display manager : set_image : " << window_name << " , pos = " << window_position << std::endl;
 
   // grab the associated roi to push the image into the window
   cv::Rect roi = my_roi[window_position];
-  std::cout << "copy image rows/cols " << image.rows << "," << image.cols << " to window rows/cols " << my_output_image.rows << "," << my_output_image.cols << std::endl;
-  std::cout << "roi " << roi << std::endl;
+  if (debug_on==true) std::cout << "copy image rows/cols " << image.rows << "," << image.cols << " to window rows/cols " << my_output_image.rows << "," << my_output_image.cols << std::endl;
+  if (debug_on==true) std::cout << "roi " << roi << std::endl;
 
   //cv::Rect test_roi = cv::Rect(image.cols, image.rows, image.cols, image.rows);
   //std::cout << "roi " << roi << " , test_roi " << test_roi << std::endl;

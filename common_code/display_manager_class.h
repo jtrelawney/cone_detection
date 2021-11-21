@@ -19,6 +19,7 @@ public:
   cv::Mat get_image();
 
   bool is_configured;
+  void toggle_debug_output(bool onoff);
 
 private:
   // window count: number of windows in the output ,currently fixed to 4
@@ -35,6 +36,8 @@ private:
   // the output image
   cv::Mat my_output_image;
   int output_image_type;
+
+  bool debug_on;
 
 };
 
