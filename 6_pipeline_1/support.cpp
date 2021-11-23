@@ -1,9 +1,17 @@
 #include "support.h"
 
-node_class::node_class(){this->point = cv::Point(), prev = nullptr; next = nullptr;};
+blobs::~blobs(){}
+blobs::blobs(){blob_count = 0; }
+blob_cloud blobs::get_blobs(){ return my_blobs; }
+int blobs::add_point(cv::Point point){
+  //my_blobs;
+  return 0;
+}
+
+node_class::node_class(){this->point = WEB_PT_TYPE(), prev = nullptr; next = nullptr;};
 node_class::~node_class(){};
-node_class::node_class(cv::Point point){this->point = point, prev = nullptr; next = nullptr;};
-node_class::node_class(cv::Point data, node_class *prev, node_class *next){
+node_class::node_class(WEB_PT_TYPE point){this->point = point, prev = nullptr; next = nullptr;};
+node_class::node_class(WEB_PT_TYPE data, node_class *prev, node_class *next){
   this->point = data;
   this->prev = prev;
   this->next = next;
@@ -20,7 +28,7 @@ void spider_web_class::create_web(int start_x, int start_y, int max_x, int max_y
   std::cout << "   max x, max y = " << max_x << "," << max_y;
   std::cout << "   , d = " << distance << std::endl;
 
-  start_node = new node_class( cv::Point(start_x,start_y) );
+  start_node = new node_class( WEB_PT_TYPE(start_x,start_y) );
   current_node = start_node;
   make_web(start_x, start_y, max_x, max_y, distance, current_node);
 
@@ -31,22 +39,22 @@ node_class* spider_web_class::make_web(int sx, int sy, int mx, int my, int dista
 
   //std::cout <<  "currently at " << x << "," << y << std::endl;
   int x = current_node -> point.x, y = current_node -> point.y;
-  std::cout <<  "currently at " <<  x << "," << y << std::endl;
+  //std::cout <<  "currently at " <<  x << "," << y << std::endl;
 
   // create the new node and link its prev
   // also link the current to the new
   // then follow up on the next partner
 
-  if (x<mx) {
+  if (x+distance<mx) { // only if x doesn't cross the max x when taking the next step
     int new_x = x + distance;
-    node_class* new_node = new node_class( cv::Point(new_x,y), current_node, nullptr);
+    node_class* new_node = new node_class( WEB_PT_TYPE(new_x,y), current_node, nullptr);
     current_node -> next = new_node;
     make_web( sx, sy, mx, my, distance, new_node);
-  } else if (y<my) {
+  } else if (y+distance<my) { // only if x doesn't cross the max y when taking the next step
     // start over with x and drop to next y
     x = sx;
     int new_y = y + distance;
-    node_class* new_node = new node_class( cv::Point(x,new_y), current_node, nullptr);
+    node_class* new_node = new node_class( WEB_PT_TYPE(x,new_y), current_node, nullptr);
     current_node -> next = new_node;
     make_web( sx, sy, mx, my, distance, new_node);
   } else {
@@ -56,15 +64,15 @@ node_class* spider_web_class::make_web(int sx, int sy, int mx, int my, int dista
   return nullptr;
 }
 
-cv::Point spider_web_class::restart(){
+WEB_PT_TYPE spider_web_class::restart(){
   current_node = start_node;
-  if (start_node == nullptr) return cv::Point();
+  if (start_node == nullptr) return WEB_PT_TYPE();
   return start_node->point;
 };
 
-cv::Point spider_web_class::get_next(){
+WEB_PT_TYPE spider_web_class::get_next(){
 
-  cv::Point result = cv::Point();
+  WEB_PT_TYPE result = WEB_PT_TYPE();
 
   if ( current_node->next != nullptr){
     current_node = current_node->next;

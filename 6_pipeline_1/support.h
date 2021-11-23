@@ -5,16 +5,46 @@
 
 bool is_orange(cv::Vec3b color);
 
+template<typename T>
+std::vector<T> slice(std::vector<T> const &v, int m, int n)
+{
+  if (n<m) {int help = m; m=n; n=help;};
+  // ensure max entries
+  if (n > v.size()+1) n = v.size()-1;
+  auto first = v.cbegin() + m;
+  auto last = v.cbegin() + n + 1;
+
+  std::vector<T> vec(first, last);
+  return vec;
+};
+
+//typedef std::vector<std::vector<cv::Point>> blob_cloud;
+using blob_cloud = std::vector<std::vector<cv::Point2i>>;
+
 const std::vector<cv::Rect> init_view_windows{ cv::Rect(00,200,300,200), cv::Rect(200,100,100,100), cv::Rect(100,200,50,200) };
+
+class blobs{
+public:
+  blobs();
+  ~blobs();
+  int add_point(cv::Point point);
+  blob_cloud get_blobs();
+
+private:
+  blob_cloud my_blobs;
+  int blob_count;
+};
+
+using WEB_PT_TYPE = cv::Point2d;
 
 class node_class{
 public:
-  cv::Point point;
+  WEB_PT_TYPE point;
   node_class *prev, *next;
 
   node_class();
-  node_class(cv::Point point);
-  node_class(cv::Point point, node_class *prev, node_class *next);
+  node_class(WEB_PT_TYPE point);
+  node_class(WEB_PT_TYPE point, node_class *prev, node_class *next);
   ~node_class();
 };
 
@@ -25,8 +55,8 @@ public:
   ~spider_web_class();
   void create_web(int start_x, int start_y, int max_x, int max_y, int distance);
 
-  cv::Point restart();
-  cv::Point get_next();
+  WEB_PT_TYPE restart();
+  WEB_PT_TYPE get_next();
 
 private:
   node_class *start_node;
