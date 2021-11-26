@@ -36,11 +36,13 @@ void print_image_info(const cv::Mat &image, std::string mat_text=""){
 // matches the pattern and returns a heat map
 cv::Mat heatmap_from_template_match( const cv::Mat &img, const cv::Mat &templ, const cv::TemplateMatchModes &match_method){
 
+  // prepare the result image which is 1 pixel larger than the original reduced by the template and it is a C1 Float type
+  cv::Mat result;
   int result_cols = img.cols - templ.cols + 1;
   int result_rows = img.rows - templ.rows + 1;
-
-  cv::Mat result;
   result.create( result_rows, result_cols, CV_32FC1 );
+
+  // match into the result
   cv::matchTemplate( img, templ, result, match_method);
   return result;
 }
@@ -142,12 +144,14 @@ bool get_histogram(const cv::Mat &image, const int &bucket_count, cv::Mat &resul
   return true;
 }
 
+// finds extremes in the results images such as for template matching
 std::vector<cv::Point> find_local_minima(const cv::Mat &image){
 
   std::vector<cv::Point> result;
 
   //cv::Mat work_image = image.clone();
   cv::Mat work_image = cv::Mat(); //image.rows, image.cols, CV_8U);
+  // normalize(input, output, minvalue, maxvalue, norm, if <0 output same type as input, mask)
   cv::normalize( image, work_image, 0, 255, cv::NORM_MINMAX, -1, cv::Mat() );
   work_image.convertTo(work_image, CV_8U);
 
@@ -158,7 +162,7 @@ std::vector<cv::Point> find_local_minima(const cv::Mat &image){
   while (!done){
 
     // find min and max
-    cv::Point2i minloc(0,0),maxloc(0,0);;
+    cv::Point2i minloc(0,0),maxloc(0,0);
     cv::minMaxLoc(work_image,&mini,&maxi,&minloc,&maxloc);
     std::cout << "mini = " << mini << " , maxi = " << maxi << " , minloc = " << minloc << " , maxloc = " << maxloc << std::endl;
 
@@ -213,10 +217,14 @@ std::vector<cv::Point> find_local_minima(const cv::Mat &image){
 
 }
 
-cv::Mat create_cone_template(){
+// choose reverse background as true, if the preprocessing arrives at a dark background with a bright cone candiate
+// this sets the background for the cone template to dark too
+cv::Mat create_cone_template(bool reverse_background){
 
-  int cone_color = 0; //39;
-  int background_color = 255;//71;
+  int cone_color = 0, background_color = 255;
+  if (reverse_background) {
+    cone_color = 255, background_color = 0;
+  }
 
   int width = 100, height = 100, cone_width = 30, cone_height = 60, y_offset = 10;
 

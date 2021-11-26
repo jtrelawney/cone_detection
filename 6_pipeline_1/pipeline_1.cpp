@@ -6,8 +6,8 @@ extern const std::vector<cv::Rect> init_view_windows;
 #include "image_operations.h"
 #include "display_manager_class.h"
 #include "opencv2/opencv.hpp"
-//#include "assert";
-//#include "cassert";
+#include <assert.h>
+//#include <cassert.h>
 
 //using namespace cv;
 
@@ -54,7 +54,7 @@ int main(int, char**)
   image_list = read_image_list(video_dir_path);
 
   // read the list with cone patterns, one will be used to find the cone in the image
-  std::filesystem::path cone_pattern_dir_path = "../../cone_templates";
+  std::filesystem::path cone_pattern_dir_path = "../../cone_templates/nice/";
   std::vector<path> pattern_list;
   pattern_list = read_image_list(cone_pattern_dir_path);
 
@@ -80,11 +80,11 @@ int main(int, char**)
   while(1){
 
     // read and display the current cone pattern
-    //path pattern_path = pattern_list.at(pattern_counter);
-    //cv::cone_template = imread(pattern_path, image_mode );
+    path pattern_path = pattern_list.at(pattern_counter);
+    cone_template = imread(pattern_path, image_mode );
     //cone_template = create_cone_template();
     //cv::cone_template =  cv::Scalar::all(255) - cone_template;
-    //cv::imshow("template", cone_template);
+    cv::imshow("template", cone_template);
 
     // read and display the current image frame
     path image_path = image_list.at(frame_counter);
@@ -117,12 +117,10 @@ int main(int, char**)
     //print_image_info(frame,"frame");
     //cv::waitKey(0);
 
-    orange_points.clear();
-    std::vector<WEB_PT_TYPE> train_data;
-    std::vector<int> train_labels;
-
     // find orange points in the search web
+    orange_points.clear();
     WEB_PT_TYPE current = web.restart();
+    //WEB_PT_TYPE current;
     //std::cout << "starting with " << current << std::endl;
 
     while (current != WEB_PT_TYPE()){
@@ -132,146 +130,74 @@ int main(int, char**)
 
       // mark the orange points in the web and prepare the knn data,labels
       if (is_orange(color)) {
-        cv::circle(display_image, current, 5, cv::Scalar(0,0,255), 1);
-        train_data.push_back(current);
-        train_labels.push_back(1);
-      } else {
-        cv::circle(display_image, current, 3, cv::Scalar(255,255,255), 1);
         orange_points.push_back(current);
-        train_data.push_back(current);
-        train_labels.push_back(0);
-      }
+        //cv::circle(display_image, current, 5, cv::Scalar(0,0,255), 1);
+      } //else {
+        //cv::circle(display_image, current, 3, cv::Scalar(255,255,255), 1);
+
+      //}
       current = web.get_next();
     }
 
-    // convert to mat
-    cv::Mat td(train_data.size(), 2, CV_64F, train_data.data());
-    cv::Mat tl(train_labels.size(), 1, CV_32S, train_labels.data());
+    cv::TemplateMatchModes match_method = cv::TM_CCOEFF_NORMED; //TM_SQDIFF TM_SQDIFF_NORMED TM_CCORR TM_CCORR_NORMED TM_CCOEFF TM_CCOEFF_NORMED
 
-    bool debug = false;
+    // all orange points in the vector
+    while (orange_points.size()>0){
+      // process one point from the vector
+       current = orange_points.back();
+       orange_points.pop_back();
+       //cv::circle(display_image, current, 5, cv::Scalar(0,0,255), 1);
 
-    if (debug==true){
+       //the orange point is supposed to be part of the cone, hence cut out the region of interest
+       // the factor determines how much larger than the original cone template the roi should be
+       // 1.0 = exactly the same size
+       double roi_factor = 2.0;
+       int x = current.x, y = current.y;
+       int roi_width = (int) ( roi_factor * (double) cone_template.cols) , roi_height = (int) ( roi_factor * (double) cone_template.rows);
+       int roi_x = (int) ( (double) x - (double) roi_width / 2.0 ) , roi_y = (int) ( (double) y - (double) roi_height / 2.0);
 
-    // debug output, lots of shit due to varying datatypes and conversion troubles
-    //make sure the knn data looks ok
-    std::cout << "\n\ntest output" << std::endl;
+       // define the rect representing the roi
+       cv::Rect cone_roi( roi_x, roi_y, roi_width, roi_height);
+       //cv::rectangle( display_image, cone_roi, cv::Scalar(0, 0, 255),1, 8, 0 );
 
-    std::cout << "\n\nhead of train data vector" << std::endl;
-    auto train_test_vec = slice(train_data,0,5);
-    for (auto t: train_test_vec) std::cout << t << std::endl;
+       // verify that the roi is inside the frame
+       if (roi_x < 0) continue;
+       if (roi_x + roi_width > frame.cols) continue;
+       if (roi_y < 0) continue;
+       if (roi_y + roi_height > frame.rows) continue;
+       print_image_info(cone_template,"cone");
+       //std::cout << "x= " << cone_roi.x << " w=" << cone_roi.width << " y=" << cone_roi.y << " h=" << cone_roi.height << " m cols=" << cone_template.cols << " m rows=" << cone_template.rows << std::endl;
 
-    // convert to mat and check on proper conversion
-    //lots can go wrong: need exact size (rows and cols), datatypes need to match, and no channel defs
-    std::cout << "\n\nhead of train mat" << std::endl;
-    cv::Mat train_test_mat = cv::Mat(train_test_vec.size(),2,CV_64F,train_test_vec.data());
-    print_image_info(train_test_mat,"data");
+       // crop the roi out of the frame
+       cv::Mat test_roi;
+       test_roi = crop_area_from_image(frame, roi_x, roi_y, roi_width, roi_height);
 
-    // access the elements directly
-    std::cout << "head of train data mat, cell access" << std::endl;
-    for (int i=0; i<train_test_mat.rows; i++){
-      auto x = train_test_mat.at<double>(i,0);
-      auto y = train_test_mat.at<double>(i,1);
-      std::cout << x << "," << y << std::endl;
-    }
+       // and get the heatmap
+       cv::Mat match_result = heatmap_from_template_match(test_roi, cone_template, match_method);
 
-    // production traindaata as mat
-    std::cout << "\n\nhead of production train data mat" << std::endl;
-    std::cout << td(cv::Rect(0,0,2,5)) << std::endl;
+       // when the testpatch is the same size as the template then the result is a single number, ie. the result of that particular match
+       // otherwise it is a matrix and are looking for the max (depening on the match method)
+       double mini,maxi;
+       cv::Point minpos=current, maxpos=current;
+       cv::minMaxLoc(match_result,&mini,&maxi,&minpos,&maxpos);
+       //std::cout << "min = " << mini << "   max = " << maxi << "   minpos = " << minpos << "   maxpos = " << maxpos << std::endl;
 
-    // and direct access
-    std::cout << "head of train data mat, cell access" << std::endl;
-    for (int i=0; i<4; i++){
-      int x = td.at<double>(i,0);
-      int y = td.at<double>(i,1);
-      std::cout << x << "," << y << std::endl;
-    }
+       // check for reasonable match
+       if (maxi>0.35){
+         std::cout << "match found" << std::endl;
+         cv::rectangle( display_image, cone_roi, cv::Scalar(0, 0, 255),1, 8, 0 );
+         //cv::circle(display_image, minpos, 5, cv::Scalar(0,255,0), 1);
+       } else continue;
 
-    std::cout << "\n\nhead of test label data vector" << std::endl;
-    auto label_test_vec = slice(train_labels,0,5);
-    for (auto t: label_test_vec) std::cout << t << std::endl;
+       imshow("region", test_roi);
+       imshow("match", match_result);
+       //cv::waitKey(0);
+     }
 
-    std::cout << "head of production label data mat" << std::endl;
-    std::cout << tl(cv::Rect(0,0,1,5)) << std::endl;
-
-    double mini,maxi;
-    cv::minMaxLoc(tl,&mini,&maxi);
-    std::cout << "min and max of label values, shoudl be 0 and 1" << std::endl;
-    std::cout << mini << "," << maxi << std::endl;
-
-    print_image_info(td,"data");
-    print_image_info(tl,"label");
-  }
-
-    td.convertTo(td,CV_32F);
-    tl.convertTo(tl,CV_32F);
-
-  if (debug==true) {
-    print_image_info(td,"data");
-    print_image_info(tl,"label");
-
-    std::cout << "\n\nhead of production train data mat after type conversion to 32F for KNN" << std::endl;
-    std::cout << td(cv::Rect(0,0,2,5)) << std::endl;
-    std::cout << "head of production label data mat after type conversion to 32F for KNN" << std::endl;
-    std::cout << tl(cv::Rect(0,0,1,5)) << std::endl;
-
-    // for (int i=0; i<train_data.size(); i++){
-    //   int x = td.at<float>(i,0);
-    //   int y = td.at<float>(i,1);
-    //   auto o = tl.at<float>(i);
-    //   int r = 0;
-    //   if (o!=0) std::cout << i << " : " << x << "," << y << "   : " << o << std::endl; //<< "," << r << "," << std::endl;
-    // }
-    cv::waitKey(0);
-  }
-
-    // create the data object
-    cv::Ptr<cv::ml::TrainData> trainingData;
-    trainingData = cv::ml::TrainData::create(td,cv::ml::ROW_SAMPLE,tl);
-
-    // create the knn object
-    cv::Ptr<cv::ml::KNearest> knn = cv::ml::KNearest::create();
-    knn->setIsClassifier(0);
-    knn->setAlgorithmType(cv::ml::KNearest::BRUTE_FORCE);
-    knn->setDefaultK(4);
-    //knn->train(td, cv::ml::ROW_SAMPLE, tl);
-    knn->train(trainingData);
-
-    // predict
-    cv::Mat response, dist;
-    knn->findNearest(td, 1, cv::noArray(), response, dist);
-
-    //print_image_info(response,"res");
-
-    for (int i=0; i<td.rows; i++){
-      int x = td.at<float>(i,0);
-      int y = td.at<float>(i,1);
-      float o = tl.at<float>(i);
-      float r = response.at<float>(i);
-
-      int ss = 2;
-      cv::Point ll(x-ss,y-ss), ur(x+ss,y+ss);
-
-      if (debug == true) std::cout << i << " : " << x << "," << y << "   : " << o << "," << r << "," << std::endl;
-
-      if (o!=0) {
-        cv::rectangle(frame, ll, ur, cv::Scalar(0,255,0) );
-      }
-    }
-
-    if (debug){
-      std::cout << "prediction and error distance " << std::endl;
-      std::cout << response(cv::Rect(0,0,1,5)) << std::endl;
-      std::cout << dist(cv::Rect(0,0,1,5)) << std::endl;
-    }
-
-    //cv::waitKey(0);
+     frame_counter++;
 
     //draw to roi into the image
-    cv::rectangle(
-      frame,
-      init_roi,
-      cv::Scalar(0, 0, 255),1, 8, 0
-    );
+    cv::rectangle( frame, init_roi, cv::Scalar(0, 0, 255),1, 8, 0 );
 
     imshow("original", frame);
     window_man.set_image("result", frame);
