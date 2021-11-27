@@ -23,22 +23,13 @@ int main(int, char**)
   // display manager with 4 split windows displays results
   display_manager window_man(4);
 
-  // read the list with filenames for sequential camera frames
-  std::filesystem::path video_dir_path = "../../cone_movies/run4";
-  std::vector<path> image_list;
-  image_list = read_image_list(video_dir_path);
-
-  // read the list with cone patterns, one will be used to find the cone in the image
-  std::filesystem::path cone_pattern_dir_path = "../../cone_templates";
-  std::vector<path> pattern_list;
-  pattern_list = read_image_list(cone_pattern_dir_path);
-
-
-  // define which image mode to work with   gray / color
-  cv::ImreadModes image_mode = cv::IMREAD_GRAYSCALE; //IMREAD_COLOR;//IMREAD_GRAYSCALE; //
+  // the directory needs to exist with images and the imagetype needs to match the mat type it is returned into!!!
+  cv::ImreadModes image_mode = cv::IMREAD_GRAYSCALE; //IMREAD_COLOR;//IMREAD_GRAYSCALE;
+  image_reader ir_images("../../cone_movies/run4", image_mode);
+  image_reader ir_cones("../../cone_templates/nice", image_mode);
 
   // genereal image variables
-  cv::Mat frame, display_image, cone_template;
+  cv::Mat frame, cone_template;
 
   // index for the images in the video and index for the various cone template images
   int frame_counter = 0;
@@ -47,18 +38,11 @@ int main(int, char**)
   // until press escape
   while(1){
 
-    // read and display the current cone pattern
-    path pattern_path = pattern_list.at(pattern_counter);
-    //cone_template = imread(pattern_path, image_mode );
+    //cone_template = ir_cones[pattern_counter];
     cone_template = create_cone_template(true);
-    //cone_template =  cv::Scalar::all(255) - cone_template;
+    frame = ir_images[frame_counter];
 
-    // read and display the current image frame
-    path image_path = image_list.at(frame_counter);
-    std::cout << "loading image " << frame_counter << std::endl;
-    frame = cv::imread(image_path, image_mode );
-
-    // prepare the oritinal image with cone inset
+    // prepare the original image with cone inset and histogram
     cv::Mat main_image = frame.clone();
     cv::Rect roi_cone = cv::Rect(0,0, cone_template.cols, cone_template.rows);
     cv::Mat insetImage(main_image, roi_cone );
@@ -88,10 +72,8 @@ int main(int, char**)
 
     window_man.set_image("original", preprocessed);
 
-
-    cv::Mat range_image = preprocessed.clone();
     // apply thresholds to create a binary image with values in cone range as white and the rest black
-
+    cv::Mat range_image = preprocessed.clone();
     //int threshold_type = THRESH_TOZERO;//THRESH_TOZERO; THRESH_TOZERO_INV //3; // binary threshold  THRESH_TRUNC
 
     // below threshold to 0
@@ -106,7 +88,6 @@ int main(int, char**)
 
     window_man.set_image("filter", range_image);
 
-
     // run the match
     cv::TemplateMatchModes match_method = cv::TM_CCOEFF_NORMED; //TM_SQDIFF TM_SQDIFF_NORMED TM_CCORR TM_CCORR_NORMED TM_CCOEFF TM_CCOEFF_NORMED
     bool adaptive_y_no = false;
@@ -117,13 +98,13 @@ int main(int, char**)
       match_result = heatmap_from_template_match(range_image, cone_template, match_method);
     }
 
-    // the result mat is smaller -> bring back to windowsize
+    // the result mat is smaller -> bring back to windowsize (for display only)
     cv::Mat resized_match_result;
     cv::resize(match_result, resized_match_result, cv::Size(640,480), cv::INTER_LINEAR);
     window_man.set_image("match", resized_match_result);
     //std::cout << "resize from = " << match_result.rows << "," << match_result.cols << " , to size = " << resized_match_result.rows << "," << resized_match_result.cols << std::endl;
 
-    //
+    // find the extrema
     cv::Mat result = frame.clone();
     // find 4 minima
     //std::vector<cv::Point> extremes = find_local_minima(match_result);
@@ -175,7 +156,9 @@ int main(int, char**)
       break;
     // next frame
     else if (c==32) {
-      if (frame_counter < image_list.size()) frame_counter++; else frame_counter = 0;
+      //if (frame_counter < image_list.size()) frame_counter++; else frame_counter = 0;
+
+      if ( frame_counter < ir_images.get_image_count() ) frame_counter++; else frame_counter = 0;
     }
   }
 
