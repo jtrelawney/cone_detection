@@ -16,6 +16,8 @@ bool compare_image_filenames(const path &path1, const path &path2);
 std::vector<path> read_image_list(const path &video_dir_path);
 path extract_filename(const path &this_path);
 
+
+
 class image_reader{
 public:
   image_reader(std::filesystem::path image_directory, cv::ImreadModes image_mode);
@@ -35,5 +37,6 @@ private:
   std::filesystem::path image_directory;
   std::vector<path> image_list;
 };
+
 
 #endif

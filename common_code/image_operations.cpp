@@ -2,6 +2,139 @@
 #include <assert.h>
 #include <cassert>
 
+// apply thresholds to create a binary image with values in cone range as white and the rest black
+cv::Mat binarize_image_by_color_range(const cv::Mat &image, double color_low, double color_high){
+  //int threshold_type = THRESH_TOZERO;//THRESH_TOZERO; THRESH_TOZERO_INV //3; // binary threshold  THRESH_TRUNC
+
+  cv::Mat binarized_image = image.clone();
+
+  // below threshold to 0
+  cv::threshold( image, binarized_image, color_low, 0, cv::THRESH_TOZERO );
+  // above threshold to 0
+  cv::threshold( binarized_image, binarized_image, color_high, 0, cv::THRESH_TOZERO_INV );
+  //remainder to 1;
+  cv::threshold( binarized_image, binarized_image, color_low, 255, cv::THRESH_BINARY );
+
+  return binarized_image;
+}
+
+// finds extremes in the results image created by the template match
+// result_image (type = CV_32FC1 ): result image from the template match, find the extrema in this data, which is a mat of predescribed type, as required by opencv:match()
+// template: the template image, we need the size of the template to get ot the ROI
+// extrema_list: the results will be pushed here, since the opencv match function returns the upper left corner of the template this is corrected to the actual coordinates of the extrema
+// min_or_max: bool with false = min and true = max
+// max_count: number of extremes to find before stopping the search
+// threshold: the local min or max are recoginized  only if they satisfy the threshold
+// roi_factor: the size of the patch which will be blacked out arround a extrema, this avoids finding several extrema in the same place for a particulare good template match
+int find_local_extrema(cv::Mat &result_image, const cv::Mat &template_image, std::vector<cv::Point2i> &extrema_list, int max_count, bool min_or_max, double roi_factor, double threshold){
+
+  // result reset
+  int result_count = 0;
+  extrema_list.clear();
+
+  // extrema and their locs
+  double mini, maxi;
+  cv::Point2i minloc(0,0),maxloc(0,0);
+  cv::minMaxLoc(result_image,&mini,&maxi,&minloc,&maxloc);
+
+  //std::cout << "mini = " << mini << " , maxi = " << maxi << " , minloc = " << minloc << " , maxloc = " << maxloc << std::endl;
+
+  if (min_or_max==true) extrema_list.push_back(maxloc);
+  else extrema_list.push_back(minloc);
+  result_count++;
+
+  return result_count;
+}
+
+// finds extremes in the results images such as for template matching
+std::vector<cv::Point> find_local_minima(const cv::Mat &image){
+
+  std::vector<cv::Point> result;
+
+  //cv::Mat work_image = image.clone();
+  cv::Mat work_image = cv::Mat(); //image.rows, image.cols, CV_8U);
+  // normalize(input, output, minvalue, maxvalue, norm, if <0 output same type as input, mask)
+  cv::normalize( image, work_image, 0, 255, cv::NORM_MINMAX, -1, cv::Mat() );
+  work_image.convertTo(work_image, CV_8U);
+
+  int max_count = 4;
+  double mini, maxi;
+
+  bool done = false;
+  while (!done){
+
+    // find min and max
+    cv::Point2i minloc(0,0),maxloc(0,0);
+    cv::minMaxLoc(work_image,&mini,&maxi,&minloc,&maxloc);
+    std::cout << "mini = " << mini << " , maxi = " << maxi << " , minloc = " << minloc << " , maxloc = " << maxloc << std::endl;
+
+    // chose the extreme, either the min or the max
+    bool min_not_max = true;
+    cv::Point2i which_one = minloc;
+    if (min_not_max==false) which_one = maxloc;
+
+    // for as many matches we are looking for: save the result
+    if (max_count>0) {
+      result.push_back(which_one);
+      max_count--;
+
+      //  now fill in the area with the oposite extreme values, if working with max - fill in min and vice versa
+      double fill_value = maxi;
+      if (min_not_max==false) fill_value = mini;
+
+      cv::Rect fill_area(which_one.x -10,which_one.y -10, which_one.x + 10, which_one.y + 10);
+      cv::Scalar loDiff = 50;
+      cv::Scalar upDiff = 50;
+
+      int connectivity = 4 + (255 << 8) + cv::FLOODFILL_FIXED_RANGE;
+
+      //cv::Rect roi(1,1, work_image.cols-2, work_image.rows-2);
+      //cv::Mat work_image_roi = image(roi);
+
+      // create he mask with requred size
+      cv::Mat mask = work_image.clone();
+      cv::copyMakeBorder(mask, mask, 1, 1, 1, 1, cv::BORDER_REPLICATE);
+      std::cout << work_image.size() << "," << work_image.type() << "," << mask.size() << ","  << mask.type() << std::endl;
+
+      //imshow("workimage", work_image);
+
+      int area = cv::floodFill(work_image, which_one, fill_value, NULL, loDiff, upDiff, connectivity);
+      std::cout << "area = " << area << std::endl;
+      //int area = cv::floodFill(work_image, mask, which_one, fill_value, NULL, loDiff, upDiff, 4);
+      //imshow("flooded", work_image);
+
+      //imshow("mask", mask);
+
+      //while(cv::waitKey(10) != 32);
+      std::cout << "next extreme " << max_count << std::endl;
+    } else done = true;
+
+    std::cout << "which_one = " << which_one << " , done = " << done << std::endl;
+
+  }
+
+  //std::cout << "bye bye with " << result << std::endl;
+
+  return result;
+
+}
+
+
+// matches the pattern and returns a heat map
+cv::Mat heatmap_from_template_match( const cv::Mat &img, const cv::Mat &templ, const cv::TemplateMatchModes &match_method){
+
+  // prepare the result image which is 1 pixel larger than the original reduced by the template and it is a C1 Float type
+  cv::Mat result;
+  int result_cols = img.cols - templ.cols + 1;
+  int result_rows = img.rows - templ.rows + 1;
+  result.create( result_rows, result_cols, CV_32FC1 );
+
+  // match into the result
+  cv::matchTemplate( img, templ, result, match_method);
+  return result;
+}
+
+
 std::string get_image_type_str(int type) {
   std::string r;
 
@@ -31,20 +164,6 @@ void print_image_info(const cv::Mat &image, std::string mat_text=""){
     start_text = "image info " + mat_text + " : rows / cols = ";
   }
   std::cout << start_text << image.rows << "," << image.cols << "   channels = " << image.channels() << "   type = " << get_image_type_str(image.type()) << std::endl;
-}
-
-// matches the pattern and returns a heat map
-cv::Mat heatmap_from_template_match( const cv::Mat &img, const cv::Mat &templ, const cv::TemplateMatchModes &match_method){
-
-  // prepare the result image which is 1 pixel larger than the original reduced by the template and it is a C1 Float type
-  cv::Mat result;
-  int result_cols = img.cols - templ.cols + 1;
-  int result_rows = img.rows - templ.rows + 1;
-  result.create( result_rows, result_cols, CV_32FC1 );
-
-  // match into the result
-  cv::matchTemplate( img, templ, result, match_method);
-  return result;
 }
 
 // crops a rectangle from the original image
@@ -142,79 +261,6 @@ bool get_histogram(const cv::Mat &image, const int &bucket_count, cv::Mat &resul
   result_image = histo_plot;
 
   return true;
-}
-
-// finds extremes in the results images such as for template matching
-std::vector<cv::Point> find_local_minima(const cv::Mat &image){
-
-  std::vector<cv::Point> result;
-
-  //cv::Mat work_image = image.clone();
-  cv::Mat work_image = cv::Mat(); //image.rows, image.cols, CV_8U);
-  // normalize(input, output, minvalue, maxvalue, norm, if <0 output same type as input, mask)
-  cv::normalize( image, work_image, 0, 255, cv::NORM_MINMAX, -1, cv::Mat() );
-  work_image.convertTo(work_image, CV_8U);
-
-  int max_count = 4;
-  double mini, maxi;
-
-  bool done = false;
-  while (!done){
-
-    // find min and max
-    cv::Point2i minloc(0,0),maxloc(0,0);
-    cv::minMaxLoc(work_image,&mini,&maxi,&minloc,&maxloc);
-    std::cout << "mini = " << mini << " , maxi = " << maxi << " , minloc = " << minloc << " , maxloc = " << maxloc << std::endl;
-
-    // chose the extreme, either the min or the max
-    bool min_not_max = true;
-    cv::Point2i which_one = minloc;
-    if (min_not_max==false) which_one = maxloc;
-
-    // for as many matches we are looking for: save the result
-    if (max_count>0) {
-      result.push_back(which_one);
-      max_count--;
-
-      //  now fill in the area with the oposite extreme values, if working with max - fill in min and vice versa
-      double fill_value = maxi;
-      if (min_not_max==false) fill_value = mini;
-
-      cv::Rect fill_area(which_one.x -10,which_one.y -10, which_one.x + 10, which_one.y + 10);
-      cv::Scalar loDiff = 50;
-      cv::Scalar upDiff = 50;
-
-      int connectivity = 4 + (255 << 8) + cv::FLOODFILL_FIXED_RANGE;
-
-      //cv::Rect roi(1,1, work_image.cols-2, work_image.rows-2);
-      //cv::Mat work_image_roi = image(roi);
-
-      // create he mask with requred size
-      cv::Mat mask = work_image.clone();
-      cv::copyMakeBorder(mask, mask, 1, 1, 1, 1, cv::BORDER_REPLICATE);
-      std::cout << work_image.size() << "," << work_image.type() << "," << mask.size() << ","  << mask.type() << std::endl;
-
-      //imshow("workimage", work_image);
-
-      int area = cv::floodFill(work_image, which_one, fill_value, NULL, loDiff, upDiff, connectivity);
-      std::cout << "area = " << area << std::endl;
-      //int area = cv::floodFill(work_image, mask, which_one, fill_value, NULL, loDiff, upDiff, 4);
-      //imshow("flooded", work_image);
-
-      //imshow("mask", mask);
-
-      //while(cv::waitKey(10) != 32);
-      std::cout << "next extreme " << max_count << std::endl;
-    } else done = true;
-
-    std::cout << "which_one = " << which_one << " , done = " << done << std::endl;
-
-  }
-
-  //std::cout << "bye bye with " << result << std::endl;
-
-  return result;
-
 }
 
 // choose reverse background as true, if the preprocessing arrives at a dark background with a bright cone candiate

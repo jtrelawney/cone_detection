@@ -34,10 +34,10 @@ void display_manager::configure(cv::Mat template_image){
   //my_roi[2] = cv::Rect(0, window_cols, window_rows, window_cols);
   my_roi[3] = cv::Rect(window_cols, window_rows, window_cols, window_rows);
 
-  std::cout << "rois" << std::endl;
-  for (auto roi: my_roi){
-    std::cout << roi << std::endl;
-  }
+  //std::cout << "rois" << std::endl;
+  //for (auto roi: my_roi){
+  //  std::cout << roi << std::endl;
+  //}
 
   //assert (window_count=0);
   is_configured = true;
