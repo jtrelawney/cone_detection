@@ -87,6 +87,7 @@ int main(int, char**)
     // read and display the current image
     path image_path = image_list.at(frame_counter);
     frame = imread(image_path, IMREAD_COLOR );
+    cv::Mat frame_copy = frame.clone();
 
     // if selection was complete - draw a red ROI
     // if selection was initiated - draw a white ROI
@@ -135,7 +136,8 @@ int main(int, char**)
         path template_path(template_filename);
         std::cout << "saving image" << template_path << std::endl;
 
-        Mat cropped = frame(roi);
+        // crop from the copy or the on screen rectangle will be cropped too
+        Mat cropped = frame_copy(roi);
         cv::imshow("cropped image ",cropped);
         imwrite(template_path, cropped);
         cv::waitKey(0);
