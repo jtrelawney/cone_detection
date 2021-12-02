@@ -225,6 +225,91 @@ cv::Mat plot_histo(const cv::Mat &histo_data, cv::Mat &result_image){
   return result_image;
 }
 
+#include <math.h>
+
+gaussian::gaussian(const cv::Mat &data){
+
+  if (data.channels() != 1) {
+    std::cout << "data channels() != 1" << std::endl;
+  }
+
+  cv::Scalar m, stdv;
+  cv::meanStdDev(data,m,stdv);
+  this->mu = m[0];
+  this->stddev = stdv[0];
+
+  return;
+
+  std::cout << "data entries  = " << data.rows << "   mu = " << this->mu << "   stddev = " << this->stddev << std::endl;
+
+  this->mu = 0.0;
+  for (int i=0; i<data.rows; i++){
+    float d = data.at<float>(i,0);
+    this->mu += d;
+    //std::cout << "d " << i << " - " << d << std::endl;
+  }
+
+  this->mu = this->mu / data.rows;
+
+
+  cv::Mat help(data);
+  help = help - this->mu;
+  std::cout << help << std::endl;
+  //cv::Mat transe;
+  //transpose(help,transe);
+  cv::Mat square;// = help * transe;
+  multiply(help, help, square);
+  //std::cout << square << std::endl;
+
+  //std::cout << cv::sum(square) << std::endl;
+
+  float s = cv::sum(square)[0];
+
+  this->stddev = sqrt(s/data.rows);
+  //std::cout << "data entries  = " << data.rows << "   mu = " << this->mu << "   stddev = " << this->stddev << std::endl;
+}
+gaussian::~gaussian(){}
+void gaussian::get_params(double &mu,double &stddev){ mu = this->mu; stddev = this->stddev; };
+gaussian::gaussian(){}
+
+
+bool get_histogram1(const cv::Mat &image, const int &bucket_count, cv::Mat &result_image, cv::Mat &result_data ){
+
+  //result_image = cv::Mat::zeros(image.rows,image.cols,image.type());
+  //return true;
+
+  //result_image = image.clone();
+
+  cv::Mat hsv_image;
+
+  //cv::cvtColor(image, result_image, cv::COLOR_BGR2YCrCb);
+
+  // convert to hsv and separate the channels to get access to the color channel
+  cv::cvtColor(image, hsv_image, cv::COLOR_BGR2HSV);
+  std::vector<cv::Mat> color_channels;
+  cv::split(hsv_image, color_channels);
+
+  cv::Mat color_image(image.rows,image.cols,CV_8UC1);
+  cv::Mat r;
+  bool result = get_histogram(color_image, 255, result_image, result_data );
+  return true;
+
+
+  //Equalize the histogram of the Y channel
+  cv::equalizeHist(color_channels[2], color_channels[2]);
+  //cv::equalizeHist(color_channels[1], color_channels[1]);
+  //cv::equalizeHist(color_channels[2], color_channels[2]);
+
+  // merge back and convert to bgr
+  cv::merge(color_channels, result_image);
+  //cv::cvtColor(result_image, result_image, cv::COLOR_YCrCb2BGR);
+  cv::cvtColor(result_image, result_image, cv::COLOR_HSV2BGR);
+
+  //result_image = hist_equalized_image.clone();
+
+  return true;
+}
+
 // calculates and plots the histogram for the given image
 // currently the function assumes 256 input values and only accepts single channel input
 // the result data can be empty, the result_image must be sized because the data is fit into the full size of the result image
@@ -232,7 +317,7 @@ bool get_histogram(const cv::Mat &image, const int &bucket_count, cv::Mat &resul
 
   // ensure one channel only
   if (image.channels() != 1){
-    std::cout << "image has " << image.channels() << " channels, required are 1." << std::endl;
+    std::cout << "get_histogram() : image has " << image.channels() << " channels, required are 1." << std::endl;
     return false;
   }
 

@@ -15,7 +15,7 @@ public:
 
   void configure(cv::Mat template_image);
   bool set_window(std::string window_name, int window_position);
-  bool set_image(std::string window_name, cv::Mat image);
+  bool set_image(std::string window_name, cv::Mat image, bool resize=false);
   cv::Mat get_image();
 
   bool is_configured;

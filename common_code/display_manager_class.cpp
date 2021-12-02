@@ -54,7 +54,7 @@ bool display_manager::set_window(std::string window_name, int window_position){
   return true;
 }
 
-bool display_manager::set_image(std::string window_name, cv::Mat image){
+bool display_manager::set_image(std::string window_name, cv::Mat image, bool resize){
 
   //debug
   /*

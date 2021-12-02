@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(basic_features)
+project(cones_hsv)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -18,15 +18,10 @@ add_library(libdisplaymanager STATIC
     ../../common_code/display_manager_class.cpp
 )
 
-add_library(libfeaturedetect STATIC
-    ../../common_code/feature_detection.cpp
-)
-
 target_include_directories(libfileops PUBLIC ../common_code/ )
 target_include_directories(libimageops PUBLIC ../common_code/ )
 target_include_directories(libdisplaymanager PUBLIC ../common_code/ )
-target_include_directories(libfeaturedetect PUBLIC ../common_code/ )
 
-add_executable(basic_features.exe basic_features.cpp)
+add_executable(cones_hsv_exploration.exe cones_hsv_exploration.cpp)
 
-target_link_libraries(basic_features.exe libfileops libdisplaymanager libimageops libfeaturedetect ${OpenCV_LIBS})
+target_link_libraries(cones_hsv_exploration.exe libfileops libdisplaymanager libimageops ${OpenCV_LIBS})
