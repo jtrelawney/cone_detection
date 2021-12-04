@@ -66,6 +66,58 @@ void plot_cone_line(cv::Mat &image, double result_theta, int result_rho){
 }
 
 
+class rho_tracker_class{
+public:
+  rho_tracker_class(double theta):_theta(theta),_max_rho(-1),_max_rho_count(-1){};
+  ~rho_tracker_class(){};
+
+  void inc( int rho, cv::Point2i p){
+
+      auto entry = rho_counter.find(rho);
+      if ( entry == rho_counter.end() ) {
+          rho_counter.insert({rho,1});
+          if (_max_rho_count == -1) {
+            _max_rho_count = 1;
+            _max_rho = rho;
+          }
+      } else {
+          entry->second++;
+          if (entry->second > _max_rho_count) {
+            _max_rho_count = entry->second;
+            _max_rho = rho;
+          };
+      }
+
+      auto ass_points = associated_points.find(rho);
+      if ( ass_points == associated_points.end() ) {
+          std::vector<cv::Point2i> helper;
+          helper.push_back(p);
+          associated_points.insert({rho,helper});
+      } else {
+          ass_points->second.push_back(p);
+      }
+    };
+
+    void get_max(int &max_count, int &rho, double &theta, std::vector<cv::Point2i> &return_points){
+      max_count = _max_rho_count;
+      theta = _theta;
+      rho = _max_rho;
+      auto ass_points = associated_points.find(rho);
+      if ( ass_points == associated_points.end() ) {
+        std::cout << "error get_max() for rho = " << rho << ". the max rho doesn't have associated points. that is fucked up" << std::endl;
+      } else {
+          return_points = ass_points->second;
+      }
+    };
+
+private:
+  rho_tracker_class(){};
+  double _theta;
+  std::map< int, int > rho_counter;
+  std::map< int, std::vector<cv::Point2i> > associated_points;
+  int _max_rho,_max_rho_count;
+};
+
 // the caller adjust the theta from real world to opencv angle
 // the rho calculation swaps
 void find_cone(const cv::Mat filtered_image, double cone_theta, int iterations, double step_size, int &result_rho, double &result_theta){
@@ -91,6 +143,7 @@ void find_cone(const cv::Mat filtered_image, double cone_theta, int iterations, 
 
     // this where the rho (constraint by the given theta) for each of the points are counted
     std::map< int, int > rho_counter;
+    rho_tracker_class rho_tracker(theta);
 
     // iterate through pixel coordinates
     for ( int i=0; i<filtered_image.cols; i++){
@@ -107,25 +160,35 @@ void find_cone(const cv::Mat filtered_image, double cone_theta, int iterations, 
           int rho = (int) ( (double)i * sin(theta) + (double)j * cos(theta) );
 
           // increase the existing count for this rho, and create it it doesnt exist yet
+          rho_tracker.inc(rho,cv::Point2i(i,j));
+
           auto entry = rho_counter.find(rho);
           if ( entry == rho_counter.end() ) rho_counter.insert({rho,1}); else  entry->second++;
         }
       }
     } // end of image iterations
 
-    //std::cout << "============================" << std::endl;
+    std::cout << "============================" << std::endl;
     // find the max rho count for the constraint theta in this point cloud
     for (auto ip:rho_counter){
-      if (ip.second > max_count) {
-        max_count = ip.second;
-        max_index = ip.first;
-        result_rho = max_index;
-        result_theta = theta;
-      }
+          if (ip.second > max_count) {
+            max_count = ip.second;
+            max_index = ip.first;
+            result_rho = max_index;
+            result_theta = theta;
+          }
       //std::cout << ip.first << "," << ip.second << "    max = " << max_index << "," << max_count << std::endl;
-    } // end of max iterations
+      } // end of max iterations
+      //std::cout << "============================" << std::endl;
 
-  //std::cout << "============================" << std::endl;
+    std::cout << max_count << "," << result_rho << " , " << result_theta << std::endl;
+
+    // std::cout << "---------" << std::endl;
+    // std::vector<cv::Point2i> result_points;
+    // rho_tracker.get_max(max_count, result_rho, result_theta, result_points);
+    // std::cout << max_count << "," << result_rho << " , " << result_theta << std::endl;
+    // std::cout << "count associates points = " << result_points.size() << std::endl;
+
 
 //std::cout << "done counter = " << counter << std::endl;
 } // end of theta iterations

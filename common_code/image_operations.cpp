@@ -291,7 +291,7 @@ bool get_histogram1(const cv::Mat &image, const int &bucket_count, cv::Mat &resu
 
   cv::Mat color_image(image.rows,image.cols,CV_8UC1);
   cv::Mat r;
-  bool result = get_histogram(color_image, 255, result_image, result_data );
+  get_histogram(color_image, 255, result_image, result_data );
   return true;
 
 
@@ -397,17 +397,17 @@ void put_text(cv::Mat &image, std::string this_text, int x=10, int y=30, cv::Sca
 // converts image to HSV and filters for the specified color into a binary
 cv::Mat filter_hsv_for_color(const cv::Mat &image, cv::Scalar lower_bound, cv::Scalar upper_bound){
 
-  //hsv parameters preset
-  int iLowH = 0;
-  int iHighH = 70;
-  int iLowS = 100;
-  int iHighS = 255;
-  int iLowV = 70;
-  int iHighV = 200;
+  // //hsv parameters preset
+  // int iLowH = 0;
+  // int iHighH = 70;
+  // int iLowS = 100;
+  // int iHighS = 255;
+  // int iLowV = 70;
+  // int iHighV = 200;
 
   // preset the hsv filter
-  cv::Scalar lower = cv::Scalar(iLowH, iLowS, iLowV);
-  cv::Scalar higher = cv::Scalar(iHighH, iHighS, iHighV);
+  //cv::Scalar lower = cv::Scalar(iLowH, iLowS, iLowV);
+  //cv::Scalar higher = cv::Scalar(iHighH, iHighS, iHighV);
 
   //cv::Mat result = image.clone();
   cv::Mat result;
