@@ -22,10 +22,10 @@ int iLowV = 80, track_cone_low;
 int iHighV = 200;
 
 // call back functions for the sliders, only necessary when they should ajdust / display something
-static void tb_a_low( int, void* ){}
-static void tb_a_high( int, void* ){}
-static void tb_b_low( int, void* ){}
-static void tb_b_high( int, void* ){}
+//static void tb_a_low( int, void* ){}
+//static void tb_a_high( int, void* ){}
+//static void tb_b_low( int, void* ){}
+//static void tb_b_high( int, void* ){}
 static void tb_c_low( int, void* ){ track_cone_low = iLowV; }
 static void tb_c_high( int, void* ){ track_cone_high = iHighS; }
 
@@ -52,12 +52,15 @@ int main(int, char**)
   image_list = read_image_list(video_dir_path);
 
   // read the list with cone patterns, one will be used to find the cone in the image
-  std::filesystem::path cone_pattern_dir_path = "../../cone_templates";
+  std::filesystem::path cone_pattern_dir_path = "../../cone_templates/nice_with_extra_space";
+
+  ///home/jconnor/Projects/cone_detection/cone_templates/
+
   std::vector<path> pattern_list;
   pattern_list = read_image_list(cone_pattern_dir_path);
 
   std::vector<cv::Mat> cones;
-  int counter = 0;
+  //int counter = 0;
   int largest_rows = 0, largest_cols = 0;
   cv::Mat largest_cone;
 
@@ -125,8 +128,8 @@ int main(int, char**)
   cv::Mat frame, display_image, cone_template, pre_processed_frame;
 
   // index for the images in the video and index for the various cone template images
-  int frame_counter = 0;
-  int pattern_counter = 0;
+  //int frame_counter = 0;
+  //int pattern_counter = 0;
 
   // define which mode the images are read from file
   // for this app we work with grayscale
@@ -146,7 +149,7 @@ int main(int, char**)
   // until press escape
   while(1){
 
-    for (int i=0; i<cones.size(); i++){
+    for (uint i=0; i<cones.size(); i++){
 
       cv::Mat cone = cones[i];
 
